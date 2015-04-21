@@ -1,0 +1,32 @@
+#!/bin/bash
+#PBS -S /bin/bash
+#PBS -N dispatcher
+#PBS -d /scratch/rists/djiao/dispatcher_test
+#PBS -q medium
+#PBS -l nodes=1:ppn=8
+#PBS -l walltime=24:00:00
+#PBS -j oe
+#PBS -V
+
+export DISPATCHER_EXE=$DISPATCHER_PATH/init_dispatcher
+export PARAMLIST=paramlist
+# must be this name "env_file"
+export ENV_FILE=env_file
+
+# save current path as file. 
+# will be read once dispatcher is running.
+# if full path is specified in $PARAMLIST, this is optional
+echo $PBS_O_PATH > $ENV_FILE
+
+if [ -f $PARAMLIST ]; then
+  rm $PARAMLIST
+fi
+
+# create file $PARAMLIST and write commands into it
+for i in {1..8}
+  do
+    echo "bowtie2 -x bowtie/NC_012967.1 -1 SRR030257_1.fastq -2 SRR030257_2.fastq -S ${i}.sam" >> $PARAMLIST
+  done 
+$DISPATCHER_PATH/paramrun $DISPATCHER_EXE $PARAMLIST
+
+rm $ENV_FILE

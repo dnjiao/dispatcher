@@ -1,0 +1,37 @@
+#!/bin/bash
+#------------------------------------------------
+# On host setup script to run multiple tasks
+#
+# 08/18/2014  - Dian Jiao
+#
+# Adapted based on TACC's SGE launcher script by L Wilson
+#------------------------------------------------
+
+# If there are 3 arguments, the second arg will be a file with modules to be loaded.
+
+
+if [ $DISPATCHER_ARGS -eq 3 ]; then
+
+  # set up module environment
+  . /etc/profile.d/modules.sh
+  # reads in commands from module file and load the needed modules  
+  while read line
+  do
+    eval $line
+  done < $1
+elif [ $DISPATCHER_ARGS -ne 2 ]; then
+  echo "Usage: paramrun [DISPATCHER_EXE] [module_cmd] [param_file]"
+  exit 1
+fi
+  
+#Calculate the number of processor based on number of hosts and wayness of the job
+export DISPATCHER_NPROCS=$(($DISPATCHER_NHOSTS * $DISPATCHER_WAYNESS))
+
+DISPATCHER_PATH=/scratch/rists/djiao/dispatcher
+for i in `seq 0 $(($DISPATCHER_WAYNESS - 1))`
+do
+  #Start the dispatcher script for every process to be spawned on this host and give it a unique task id
+  $DISPATCHER_PATH/dispatcher $(($DISPATCHER_WAYNESS * $DISPATCHER_HOST_ID + $i)) $* &
+done
+
+wait

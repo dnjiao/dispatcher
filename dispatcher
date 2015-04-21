@@ -1,0 +1,39 @@
+#!/bin/bash
+#------------------------------------------------
+# On host setup script to run multiple tasks
+#
+# 04/21/2015  - Dian Jiao
+#
+# Adapted based on TACC's SGE launcher script
+#------------------------------------------------
+
+DISPATCHER_TSK_ID=$1
+export INFILE=${@: -1}
+export NUMTASKS=`cat $INFILE | wc -l`
+export TOTAL_PROCS=$DISPATCHER_NPROCS
+
+if [ "$DISPATCHER_TSK_ID" == "0" ];then
+    echo "--------------------------------------------------"
+    echo "Dispatcher -> $TOTAL_PROCS processors allocated."
+    echo "Dispatcher -> $NUMTASKS total tasks to complete."
+    echo "--------------------------------------------------"
+    echo " "
+else
+    sleep 0.5
+fi
+
+# Assign serial tasks
+
+DISPATCHER_JID=`expr $DISPATCHER_TSK_ID + 1`
+
+# read path variable from dispatcher_env and load in env
+export PATH=`cat env_file`
+
+while [ $DISPATCHER_JID -le $NUMTASKS ]; do
+#  export CMD=`grep -m $DISPATCHER_JID . $INFILE | tail -n 1`
+  export CMD=`head -n $DISPATCHER_JID $INFILE | tail -n 1`
+  echo "Dispatcher -> Iniating task $DISPATCHER_JID on `hostname` ($CMD)"
+  eval $CMD
+  DISPATCHER_JID=`expr $DISPATCHER_JID + $TOTAL_PROCS`
+done
+

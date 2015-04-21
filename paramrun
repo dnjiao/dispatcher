@@ -1,0 +1,61 @@
+#!/bin/sh
+#------------------------------------------------
+# On host setup script to run multiple tasks
+#
+# 08/18/2014  - Dian Jiao
+#
+# Adapted based on TACC's SGE launcher script by L Wilson
+#------------------------------------------------
+
+echo "Starting up job $PBS_JOBID"
+
+# Get the hostfile, number of slots(no of procs) and wayness from the environment
+pbs_hostfile=$PBS_NODEFILE
+pbs_slots=$PBS_NP
+pbs_ppn=$PBS_NUM_PPN
+hostlist="hostlist"
+
+if [ -f $hostlist ]; then
+  rm $hostlist
+fi
+
+# Count the number of nodes and write to a new file
+current="xx"
+
+for line in `cat $pbs_hostfile`
+do
+  if [ "$current" != "$line" ]; then
+    current=$line
+    echo $current >> $hostlist
+  fi
+done
+
+np=`cat $hostlist | wc -l`  
+#------------------------------
+# Finally launch the job
+#------------------------------
+
+echo "Starting parallel tasks..."
+
+i=0
+for host in `cat $hostlist`
+do
+  ssh $host "cd `pwd`; DISPATCHER_NHOSTS=$np DISPATCHER_HOST_ID=$i DISPATCHER_WAYNESS=$pbs_ppn DISPATCHER_ARGS=$# $*" &
+  i=`expr $i + 1`
+done
+wait
+
+rm $hostlist
+
+res=$?
+
+if [ $res -ne 0 ]; then
+  echo "Parametric job exited with code: $res"
+fi
+
+echo "Shutting down parallel environment."
+
+exit $res
+
+
+
